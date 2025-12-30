@@ -2,7 +2,7 @@ from typing import List
 
 
 def get_input():
-    with open("6test.txt", "r") as f:
+    with open("6.txt", "r") as f:
         return f.read()
 
 def rewrite(grid):
@@ -54,14 +54,11 @@ def part2():
 
             if i < len(idx_operators) - 1:
                 next_idx = idx_operators[i + 1]
-                part = line[idx:next_idx]
+                part = line[idx:next_idx - 1]
             else:
                 part = line[idx:]
 
             row.append(part)
-
-        if all([e[-1] for e in row]):
-            row = [e[:-1] for e in row]
 
         grid.append(row)
 
@@ -71,17 +68,15 @@ def part2():
 
     print(grid)
 
-    num_count = len(grid[0][0])
-
     for row in grid:
         old_nums, operation = row[:-1], row[::-1][0]
+        num_count = max([len(x.strip()) for x in old_nums])
         new_nums = []
         for num_idx in range(num_count):
             new_nums.append(''.join([x[num_idx] for x in old_nums if x[num_idx] != ' ']))
         new_nums = new_nums[::-1]
         evaluation = ''.join([new_nums[0]] + [operation + new_nums[x] for x in range(len(new_nums)) if x != 0])
         ans += int(eval(evaluation))
-        print(f'{old_nums} {evaluation} = {int(eval(evaluation))}')
 
     print(f'Part 2: {ans}')
 
