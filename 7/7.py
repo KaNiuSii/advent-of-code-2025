@@ -1,5 +1,3 @@
-from idlelib.tree import TreeNode
-from tree import SigmaTree, TreeNode
 
 def get_input():
     with open("7test.txt", "r") as f:
@@ -16,46 +14,54 @@ def part1():
 
     for splitter_line in puzzle_without_empty[1:]:
         splitters_idx = [i for i in range(len(splitter_line)) if splitter_line[i] == '^']
-        duplicates = set(objects_idx) & set(splitters_idx)
-        for duplicate in duplicates:
-            left, right = duplicate - 1, duplicate + 1
-            objects_idx.remove(duplicate)
+        hits_in_splitters = set(objects_idx) & set(splitters_idx)
+        ans += len(hits_in_splitters)
+        for hit in hits_in_splitters:
+            left, right = hit - 1, hit + 1
+            objects_idx.remove(hit)
             if left not in objects_idx:
                 objects_idx.append(left)
             if right not in objects_idx:
                 objects_idx.append(right)
-            ans += 1
 
     print(f'Part1: {ans}')
 
+class ParticleNode:
+    def __init__(self, y: int, x: int, parents: list | None):
+        self.y = y
+        self.x = x
+        self.parents = parents
+        self.left = None
+        self.right = None
+        self.splitted = False
+
+
 def part2():
-    ans = 1
+    ans = 0
 
     puzzle = get_input()
     puzzle_without_empty = [puzzle[i] for i in range(len(puzzle)) if i % 2 == 0]
-    puzzle_without_first = puzzle_without_empty[1:]
+    y = 0
 
-    first_objects_idx = puzzle_without_empty[0].index('S')
-    objects_idx = [first_objects_idx]
+    first_obj = puzzle_without_empty[0].index('S')
 
-    tree = SigmaTree(first_objects_idx)
+    objects_idx = [first_obj]
+    nodes = [ParticleNode(y, first_obj, None)]
 
-    for splitter_line_id in range(len(puzzle_without_first)):
-        splitter_line = puzzle_without_first[splitter_line_id]
+    for splitter_line in puzzle_without_empty[1:]:
+        y += 1
+
         splitters_idx = [i for i in range(len(splitter_line)) if splitter_line[i] == '^']
-        duplicates = set(objects_idx) & set(splitters_idx)
-        for duplicate in duplicates:
-            left, right = duplicate - 1, duplicate + 1
-            objects_idx.remove(duplicate)
+        hits_in_splitters = set(objects_idx) & set(splitters_idx)
+
+        for hit in hits_in_splitters:
+            left, right = hit - 1, hit + 1
+            objects_idx.remove(hit)
             if left not in objects_idx:
                 objects_idx.append(left)
             if right not in objects_idx:
                 objects_idx.append(right)
-        # print(objects_idx)
-        tree.add_range([TreeNode(x) for x in objects_idx])
 
-    tree.print_tree()
-    ans = tree.get_paths()
 
     print(f'Part2: {ans}')
 
