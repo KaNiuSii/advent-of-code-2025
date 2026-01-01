@@ -33,8 +33,17 @@ class ParticleNode:
         self.parents = parents
         self.left = None
         self.right = None
-        self.splitted = False
+        self.is_divided = False
 
+    def add_parent(self, node):
+        self.parents.append(node)
+
+
+def get_node(nodes: list, y: int, x: int) -> ParticleNode | None:
+    node_arr = [node for node in nodes if node.y == y and node.x == x]
+    if len(node_arr) == 0:
+        return None
+    return node_arr[0]
 
 def part2():
     ans = 0
