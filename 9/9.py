@@ -9,6 +9,8 @@ def calc_rect_area(one, two):
     return x * y
 
 def part1():
+    ans = 0
+
     puzzle = get_input()
 
     tiles = [list(map(int, tile.split(','))) for tile in puzzle]
@@ -19,63 +21,46 @@ def part1():
 
     print(f'Part1: {ans}')
 
-def get_min_max(o, t):
+def get_max_min(o, t):
     xs = max(o[0], t[0]), min(o[0], t[0])
     ys = max(o[1], t[1]), min(o[1], t[1])
     return xs, ys
 
 def filled_between(o, t):
-    tiles = set()
+    max_min = get_max_min(o, t)
 
-    min_max = get_min_max(o, t)
+    x_max, x_min = max_min[0]
+    y_max, y_min = max_min[1]
 
-    x_max, x_min = min_max[0]
-    y_max, y_min = min_max[1]
-
-    for x in range(x_min, x_max + 1):
-        for y in range(y_min, y_max + 1):
-            tiles.update((x, y))
-
-    return tiles
+    return [(x, y) for x in range(x_min, x_max + 1) for y in range(y_min, y_max + 1)]
 
 def get_legal_tiles(tiles):
-    res = set(tiles)
+    res = tiles.copy()
 
-    tmp = {}
     for i in range(len(tiles) - 1):
-        tile = (one, two) = tiles[i], tiles[i + 1]
-        tmp[tile] = filled_between(one, two)
-    last_to_first = (tiles[-1], tiles[0])
-    tmp[last_to_first] = filled_between(last_to_first[0], last_to_first[1])
+        one, two = tiles[i], tiles[i + 1]
+        res += filled_between(one, two)
+    res += filled_between(tiles[-1], tiles[0])
 
-    for (one, two), filled in tmp.items():
-        res.update(filled)
-
-    res.update(get_filled_shape(res, tiles))
+    res += get_filled_shape(res, tiles)
 
     return res
 
 def get_filled_shape(border_tiles, puzzle_tiles):
-    bt_set = set(border_tiles)
-    res = set(border_tiles)
-
-    min_max_dic = {}
-    for one in puzzle_tiles:
-        for two in puzzle_tiles:
-            min_max_dic[(one, two)] = get_min_max(one, two)
+    res = border_tiles.copy()
 
     def process_filling(o, t):
-        xs, ys = min_max_dic[(o, t)]
-        corners = set([(x, y) for x in xs for y in ys])
-        if corners.issubset(bt_set):
+        xs, ys = get_max_min(o, t)
+        corners = [(x, y) for x in xs for y in ys]
+        if all(c in border_tiles for c in corners):
             return filled_between(o, t)
         return []
 
     for i in range(0, len(puzzle_tiles) - 1):
         for j in range(i + 1, len(puzzle_tiles)):
             one, two = puzzle_tiles[i], puzzle_tiles[j]
-            processed = process_filling(one, two)
-            res.update(processed)
+            res += process_filling(one, two)
+
     return res
 
 def print_test(tiles):
@@ -93,25 +78,19 @@ def part2():
 
     legal_tiles = get_legal_tiles(tiles)
 
-    print_test(legal_tiles)
-
-    candidates = set([(one, two) for one in tiles for two in tiles if one != two])
-
-    print(f'made candidates: {len(candidates)}')
-
-    candidate_tiles = {
-        (one, two): filled_between(one, two) for one, two in candidates
-    }
-
-    print('made candidates tiles')
+    # print_test(legal_tiles)
 
     for one in tiles:
         for two in tiles:
-            if (one, two) not in candidate_tiles.keys():
-                continue
-            cts = candidate_tiles[(one, two)]
-            if any(ct not in legal_tiles for ct in cts):
-                ans = max(ans, calc_rect_area(one, two))
+            area = calc_rect_area(one, two)
+            xs, ys = get_max_min(one, two)
+
+            legal_in_bound = set([lt for lt in legal_tiles
+                              if xs[0] >= lt[0] >= xs[1]
+                              and ys[0] >= lt[1] >= ys[1]])
+            # print(f'len lt: {len(legal_in_bound)} area: {area}, one: {one}, two: {two}, legals: {legal_in_bound}')
+            if area <= len(legal_in_bound):
+                ans = max(ans, area)
 
     print(f'Part2: {ans}')
 
