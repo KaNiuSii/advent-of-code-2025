@@ -1,3 +1,6 @@
+from tqdm import trange
+
+
 def get_input():
     with open("9.txt", "r") as f:
         return f.read().split()
@@ -28,69 +31,76 @@ def get_max_min(o, t):
 
 def filled_between(o, t):
     max_min = get_max_min(o, t)
-
     x_max, x_min = max_min[0]
     y_max, y_min = max_min[1]
-
     return [(x, y) for x in range(x_min, x_max + 1) for y in range(y_min, y_max + 1)]
 
-def get_legal_tiles(tiles):
-    res = tiles.copy()
+def get_corners(o, t):
+    xs, ys = get_max_min(o, t)
+    return [(x, y) for x in xs for y in ys]
+
+def get_legal_corners(tiles):
+    border_tiles = set()
 
     for i in range(len(tiles) - 1):
         one, two = tiles[i], tiles[i + 1]
-        res += filled_between(one, two)
-    res += filled_between(tiles[-1], tiles[0])
+        border_tiles.update(filled_between(one, two))
+    border_tiles.update(filled_between(tiles[-1], tiles[0]))  # Zamknięcie pętli
 
-    res += get_filled_shape(res, tiles)
+    all_corners = set()
 
-    return res
+    for one in tiles:
+        for two in tiles:
+            if one != two:
+                all_corners.update(get_corners(one, two))
 
-def get_filled_shape(border_tiles, puzzle_tiles):
-    res = border_tiles.copy()
+    return get_corners_from_border(border_tiles, tiles, all_corners)
+
+def get_corners_from_border(border_tiles, puzzle_tiles, all_corners):
+    res = set()
 
     def process_filling(o, t):
-        xs, ys = get_max_min(o, t)
-        corners = [(x, y) for x in xs for y in ys]
+        corners = get_corners(o, t)
         if all(c in border_tiles for c in corners):
             return filled_between(o, t)
         return []
 
-    for i in range(0, len(puzzle_tiles) - 1):
-        for j in range(i + 1, len(puzzle_tiles)):
-            one, two = puzzle_tiles[i], puzzle_tiles[j]
-            res += process_filling(one, two)
+    pairs = list(set((min(puzzle_tiles[i], puzzle_tiles[j]), max(puzzle_tiles[i], puzzle_tiles[j]))
+                for i in range(len(puzzle_tiles) - 1)
+                for j in range(i + 1, len(puzzle_tiles))
+                if puzzle_tiles[i] != puzzle_tiles[j]))
+
+    for i in trange(len(pairs), desc='Corners'):
+        one, two = pairs[i]
+        filled = process_filling(one, two)
+        matching = all_corners.intersection(filled)
+        res.update(matching)
 
     return res
 
 def print_test(tiles):
     for x in range(10):
         for y in range(20):
-            print('#' if (y,x) in tiles else '.', end='')
+            print('#' if (y, x) in tiles else '.', end='')
         print()
 
 def part2():
     ans = 0
-
     puzzle = get_input()
 
     tiles = [tuple(map(int, tile.split(','))) for tile in puzzle]
 
-    legal_tiles = get_legal_tiles(tiles)
+    legal_tiles = get_legal_corners(tiles)
 
-    # print_test(legal_tiles)
+    pairs = list(set((min(one, two), max(one, two)) for one in tiles for two in tiles if one != two))
 
-    for one in tiles:
-        for two in tiles:
-            area = calc_rect_area(one, two)
-            xs, ys = get_max_min(one, two)
+    for i in trange(len(pairs)):
+        one, two = pairs[i]
+        area = calc_rect_area(one, two)
+        corners = set(get_corners(one, two))
 
-            legal_in_bound = set([lt for lt in legal_tiles
-                              if xs[0] >= lt[0] >= xs[1]
-                              and ys[0] >= lt[1] >= ys[1]])
-            # print(f'len lt: {len(legal_in_bound)} area: {area}, one: {one}, two: {two}, legals: {legal_in_bound}')
-            if area <= len(legal_in_bound):
-                ans = max(ans, area)
+        if corners.issubset(legal_tiles):
+            ans = max(ans, area)
 
     print(f'Part2: {ans}')
 
