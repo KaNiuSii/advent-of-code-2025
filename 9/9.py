@@ -4,7 +4,7 @@ from typing import List, Tuple, Dict
 
 
 def get_input():
-    with open("9test.txt", "r") as f:
+    with open("9.txt", "r") as f:
         return f.read().split()
 
 
@@ -29,31 +29,14 @@ def part1():
 
 Point = Tuple[int, int]
 
-UNSOLVED = 0
-
-EdgeVariant = int
-
-HORIZONTAL = -1
-VERTICAL = 1
-
-EdgeDirection = int
-
-UP = 1
-DOWN = -1
-LEFT = -1
-RIGHT = 1
-
 @dataclass
 class Edge:
-    order: int
     one: Point
     two: Point
     tiles: List[Point]
-    variant: EdgeVariant
-    direction: EdgeDirection
 
     def __str__(self) -> str:
-        return f'\nOne: {self.one}\nTwo: {self.two}\nTiles: {self.tiles}\nVariant: {self.variant}\nDirection: {self.direction}\n'
+        return f'\nOne: {self.one}\nTwo: {self.two}\nTiles: {self.tiles}\n'
 
 def get_min_max(o: Point, t: Point) -> Tuple[Tuple[int, int], Tuple[int, int]]:
     xs = min(o[0], t[0]), max(o[0], t[0])
@@ -69,37 +52,30 @@ def filled_between(o: Point, t: Point) -> List[Point]:
 def get_mid_point(edge: Edge) -> Point:
     return (edge.one[0] + edge.two[0]) // 2, (edge.one[1] + edge.two[1]) // 2
 
-def are_edges_legal(possible: Edge, compared_to: Edge) -> bool:
-    p_mp = get_mid_point(possible)
-    c_mp = get_mid_point(compared_to)
-    x_diff, y_diff = c_mp[0] - p_mp[0], c_mp[1] - p_mp[1]
-    x_diff, y_diff = (x_diff // abs(x_diff)) if x_diff != 0 else 1, (y_diff // abs(y_diff)) if y_diff != 0 else 1
-    direction = possible.direction
-    if_value = y_diff if possible.variant == HORIZONTAL else x_diff
-    return if_value == direction
 
-def get_direction_for_edges(known: Edge, seeking: Edge) -> EdgeDirection:
-    k_mp, s_mp = get_mid_point(known), get_mid_point(seeking)
-    x = 0 if k_mp[0] > s_mp[0] else 1
-    y = 0 if k_mp[1] > s_mp[1] else 1
-    direction = known.direction
-    if direction < 0:
-        direction = 0
-    k_values_grid = [[[-1, 1], [1, -1]],
-                       [[1, -1], [-1, 1]], ]
+def is_point_inside_polygon(point: Point, edges: List[Edge]) -> bool:
+    x, y = point
+    intersections = 0
 
-    grid = k_values_grid[x][y]
-    return grid[direction]
+    for edge in edges:
+        x1, y1 = edge.one
+        x2, y2 = edge.two
+
+        if y1 != y2:  # Vertical
+            if min(y1, y2) < y <= max(y1, y2):
+                intersect_x = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+
+                if intersect_x > x:
+                    intersections += 1
+        else:  # Horizontal edge
+            if y == y1:
+                if min(x1, x2) < x <= max(x1, x2):
+                    return True
+
+    return intersections % 2 == 1
 
 def get_edge(o: Point, t: Point) -> Edge:
-    variant = UNSOLVED
-    direction = UNSOLVED
-    xs, ys = get_min_max(o, t)
-    if xs[0] == xs[1]:
-        variant = VERTICAL
-    else:
-        variant = HORIZONTAL
-    return Edge(one=o, two=t, tiles=filled_between(o, t), variant=variant, direction=direction, order = -1)
+    return Edge(one=o, two=t, tiles=filled_between(o, t))
 
 def get_edges(tiles: List[Point]) -> List[Edge]:
     edges: List[Edge] = []
@@ -107,51 +83,7 @@ def get_edges(tiles: List[Point]) -> List[Edge]:
     for i in range(len(tiles) - 1):
         one, two = tiles[i], tiles[i + 1]
         edges.append(get_edge(one, two))
-        edges[-1].order = i
     edges.append(get_edge(tiles[-1], tiles[0]))
-    edges[-1].order = len(tiles) - 1
-
-    vertical_edges = sorted([e for e in edges if e.variant == VERTICAL], key=lambda e: e.one[0])
-    horizontal_edges = sorted([e for e in edges if e.variant == HORIZONTAL], key=lambda e: e.one[1])
-
-    far_left, far_right = vertical_edges[0].one[0], vertical_edges[-1].one[0]
-    far_top, far_bottom = horizontal_edges[0].one[1], horizontal_edges[-1].one[1]
-
-    for i in range(len(edges)):
-        edge = edges[i]
-        if edge.variant == VERTICAL:
-            if edge.one[0] == far_left:
-                edges[i].direction = RIGHT
-            elif edge.one[0] == far_right:
-                edges[i].direction = LEFT
-        elif edge.variant == HORIZONTAL:
-            if edge.one[1] == far_top:
-                edges[i].direction = DOWN
-            elif edge.one[1] == far_bottom:
-                edges[i].direction = UP
-
-    while any(e.direction == UNSOLVED for e in edges):
-        for i in range(len(edges)):
-            edge = edges[i]
-
-            direction = edge.direction
-
-            if direction == UNSOLVED:
-                continue
-
-            variant = edge.variant
-
-            indexes = [(i+1) % len(edges)]
-            for index in indexes:
-                e = edges[index]
-
-                if e.direction != UNSOLVED:
-                    continue
-
-                if e.variant == variant:
-                    edges[index].direction = direction
-                else:
-                    edges[index].direction = get_direction_for_edges(edge, e)
 
     return edges
 
@@ -161,21 +93,10 @@ def get_corners(o, t):
 
 def print_test(edges: List[Edge]) -> None:
     tiles = [t for e in edges for t in e.tiles]
-    mp_dir = [(get_mid_point(e), e.direction, e.variant) for e in edges]
 
     for x in range(10):
         for y in range(20):
             symbol = '#' if (y, x) in tiles else '.'
-            matching_mp = [mpd for mpd in mp_dir if mpd[0] == (y, x)]
-            if len(matching_mp) != 0:
-                direction = matching_mp[0][1]
-                variant = matching_mp[0][2]
-                if variant == HORIZONTAL:
-                    symbol = '^' if direction == UP else 'v' if direction == DOWN else 'X'
-                else:
-                    symbol = '<' if direction == LEFT else '>' if direction == RIGHT else 'X'
-
-
             print(symbol, end='')
         print()
 
@@ -192,16 +113,7 @@ def part2() -> None:
     pairs: List[Tuple[Point, Point]] = list(
         set([(min(o, t), max(o, t)) for o in tiles for t in tiles if o != t and o[0] - t[0] != 0 and o[1] - t[1] != 0]))
 
-    corner_to_edges: Dict[Point, List[Edge]] = {}
-    for i in range(len(tiles)):
-        tile = tiles[i]
-        corner_to_edges[tile] = [edges[i - 1],edges[i]]
-    for e in edges:
-        for t in e.tiles:
-            if t == e.one or t == e.two:
-                continue
-            corner_to_edges[t] = [e]
-
+    pairs = sorted(pairs, key=lambda pair: calc_rect_area(pair[0], pair[1]), reverse=True)
     for i in trange(len(pairs)):
         one, two = pairs[i]
         area = calc_rect_area(one, two)
@@ -209,23 +121,27 @@ def part2() -> None:
         corners = sorted(get_corners(one, two))
         corners = corners[:2] + corners[-2:][::-1]
 
-        pair_edges = get_edges(corners)
-
-        is_ok = False
-
-        for pair_edge in pair_edges:
-            crossed_edges = [e for t in pair_edge.tiles if t in corner_to_edges for e in corner_to_edges[t]]
-            same_variant = [e for e in crossed_edges if e.variant == pair_edge.variant]
-            is_ok = all([e.direction == pair_edge.direction for e in same_variant if len(set(e.tiles) & set(pair_edge.tiles)) > 1])
-            if not is_ok:
+        inside = True
+        for c in corners:
+            if not is_point_inside_polygon(c, edges):
+                inside = False
                 break
-            other_variant = [e for e in crossed_edges if e.variant != pair_edge.variant]
-            is_ok = all([are_edges_legal(pair_edge, o) for o in other_variant])
+        if not inside:
+            continue
 
-        if is_ok:
-            print(one, two, area)
-            ans = max(ans, area)
+        rect_tiles = set()
+        for j in range(len(corners)):
+            rect_tiles.update(filled_between(corners[j], corners[(j + 1) % len(corners)]))
 
+        inside = True
+        for rt in rect_tiles:
+            if not is_point_inside_polygon(rt, edges):
+                inside = False
+                break
+
+        if inside:
+            ans = area
+            break
 
 
     print(f'Part2: {ans}')
